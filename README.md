@@ -40,8 +40,9 @@
   - Линк към дъмпа: [Bulgarian JSONL](https://kaikki.org/dictionary/Bulgarian/jsonl/Bulgarian.jsonl.gz)
 
 - **🆘 Ако линкът умре:**
-    1. Отидете на всички налични URL-и на [kaikki.org](https://kaikki.org).  
-    2. Потърсете "Wiktionary dump parse" в GitHub.  
+    1. Посетете основния сайт [kaikki.org](https://kaikki.org).
+    2. Намерете „Bulgarian“ и скролнете до секцията **Download**.
+    3. Ако и там липсва файлът, потърсете „Wiktionary dump parse“ в GitHub или Google.  
 
 ### 2. Hugging Face Datasets (Chitanka/Alpaca)
 
