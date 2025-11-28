@@ -1,5 +1,1 @@
-output/bg_kaikki.jsonl
-output/debug_detected_homographs.tsv
-output/lexicon_raw.tsv
-output/source_wiktionary_ipa.tsv
-output/source_chitanka_stress.tsv
+output/*
