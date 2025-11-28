@@ -1,8 +1,6 @@
 # 🇧🇬 Bulgarian G2P Dataset Builder
 
-<p align="center">
-  <img src="images/image.png" alt="Bulgarian G2P Builder" width="75%">
-</p>
+![Banner](images/image.png)
 
 Този проект създава професионален речник за **Grapheme-to-Phoneme (G2P)**, необходим за трениране на модели за синтез на реч (TTS) на български език.
 
