@@ -7,7 +7,7 @@ HERE = Path(__file__).resolve().parent
 INPUT_FILE = HERE / "output" / "lexicon_raw.tsv"
 OUTPUT_FILE = HERE / "lexicon.tsv"
 
-# Твоята нова азбука с Tie-Bars и специфично Щ
+# Азбука (за да сме сигурни, че единичните букви са там)
 ALPHABET_IPA = {
     "а": "a", "б": "b", "в": "v", "г": "ɡ", "д": "d", "е": "ɛ",
     "ж": "ʒ", "з": "z", "и": "i", "й": "j", "к": "k", "л": "l",
@@ -17,52 +17,69 @@ ALPHABET_IPA = {
     "ю": "ju", "я": "ja"
 }
 
-def is_garbage(word):
-    """Филтър за боклук"""
-    # Махаме думи, започващи/завършващи с тире (освен ако не е нещо като 'по-')
+def is_garbage(word, ipa):
+    """Строг филтър за боклук"""
+    # 1. Ако думата започва/завършва с тире
     if word.startswith("-") or word.endswith("-"): 
         return True
-    
-    # Махаме очевидни OCR грешки като "аа-я" (освен ако не решиш да ги пазиш)
-    if word == "аа-я": 
+    # 2. Ако IPA съдържа грешка 'nan' (Not a Number)
+    if "nan" in ipa: 
         return True
-    
-    if not word.strip(): 
+    # 3. Празни
+    if not word.strip() or not ipa.strip(): 
         return True
     return False
 
 def clean_ipa_artifacts(ipa):
     """
-    Маха Espeak маркери като (en), (bg) и оправя структурата.
-    Пример: (en)sˈi(bɡ)kɫˈa sɐ -> sˈikɫˈasɐ
+    Дълбоко почистване на IPA символите.
     """
-    # Махаме (en), (bg), (fr) и т.н.
+    # 1. Махаме маркери за език: (bg), (en)
     ipa = re.sub(r"\([a-z]{2}\)", "", ipa)
     
-    # Махаме двойни интервали, които може да са останали след горното
-    ipa = re.sub(r"\s+", " ", ipa).strip()
+    # 2. Махаме скобите
+    ipa = ipa.replace("(", "").replace(")", "")
+    
+    # 3. Махаме диакритики и артефакти (открити при одита)
+    # U+031F (Plus sign below - ̟)
+    # U+032F (Inverted breve below - ̯)
+    # U+031E (Down tack - ̞)
+    ipa = ipa.replace("\u031f", "").replace("\u032f", "").replace("\u031e", "")
+
+    # 4. Странният символ ɟ (вероятно грешка за g или d) -> правим го на g
+    ipa = ipa.replace("ɟ", "ɡ")
+    
+    # 5. Уеднаквяване на палатализация: ʲ -> j
+    ipa = ipa.replace("ʲ", "j")
+    
+    # 6. Махаме излишни интервали
+    ipa = ipa.replace(" ", "")
+    
     return ipa
 
 def apply_custom_phonology(word, ipa):
     """
-    Прилага специфичните поправки върху целия речник:
-    1. Чисти артефакти ((en))
-    2. Оправя африкатите (ts -> t͡s)
-    3. Оправя Щ (ʃt -> ʃt͡ʃ)
+    Прилага специфичните поправки (Affricates)
     """
     if not ipa: 
         return ""
 
-    # 1. Чистене на (en)/(bg)
+    # Първо чистим артефактите
     ipa = clean_ipa_artifacts(ipa)
 
-    # 2. Оправяне на Ц и Ч
+    # 1. Оправяне на Ц (ts -> t͡s)
     if "ts" in ipa and "t͡s" not in ipa:
         ipa = ipa.replace("ts", "t͡s")
+
+    # 2. Оправяне на Ч (tʃ -> t͡ʃ)
     if "tʃ" in ipa and "t͡ʃ" not in ipa:
         ipa = ipa.replace("tʃ", "t͡ʃ")
 
-    # 3. Оправяне на Щ (само ако думата съдържа буквата 'щ')
+    # 3. Оправяне на ДЖ (dʒ -> d͡ʒ) - НОВО!
+    if "dʒ" in ipa and "d͡ʒ" not in ipa:
+        ipa = ipa.replace("dʒ", "d͡ʒ")
+
+    # 4. Оправяне на Щ (ʃt -> ʃt͡ʃ) - само ако думата има 'щ'
     if "щ" in word:
         if "ʃt" in ipa and "ʃt͡ʃ" not in ipa:
              ipa = ipa.replace("ʃt", "ʃt͡ʃ")
@@ -74,42 +91,36 @@ def main():
         print("[ERROR] Липсва lexicon_raw.tsv. Пусни Step 2!")
         return
 
-    print("[INFO] Финално полиране (Deduplication + Cleaning)...")
+    print("[INFO] Финално полиране (Deep Clean + Affricates + Dedupe)...")
     
-    # ИЗПОЛЗВАМЕ defaultdict(set), ЗА ДА ПАЗИМ ВСИЧКИ ВАРИАНТИ!
-    # word -> set(ipa1, ipa2...)
     final_dict = defaultdict(set)
 
-    # 1. Четене
     with open(INPUT_FILE, "r", encoding="utf-8") as f:
         reader = csv.reader(f, delimiter="\t")
         for row in reader:
-            if not row:
+            if not row: 
                 continue
             word = row[0].strip().lower()
             ipa = row[1].strip()
             
-            if not is_garbage(word):
+            if not is_garbage(word, ipa):
                 new_ipa = apply_custom_phonology(word, ipa)
                 if new_ipa:
                     final_dict[word].add(new_ipa)
 
-    # 2. Добавяне на азбуката
+    # Добавяне на азбуката
     for letter, ipa in ALPHABET_IPA.items():
-        # Добавяме ги. Ако вече ги има, set-ът ще игнорира дубликата.
-        # Ако съществуващото IPA е различно, ще имаме 2 варианта (което е ок, или можеш да го force-неш)
-        # Тук решаваме да го force-нем (да сме сигурни, че 'щ' е ʃt͡ʃ)
+        # Force-ваме азбуката да е точно както искаме
         final_dict[letter] = {ipa}
 
-    # 3. Сортиране и запис
+    # Сортиране и запис
     sorted_words = sorted(final_dict.keys())
     
     count = 0
     with open(OUTPUT_FILE, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f, delimiter="\t")
-        
         for word in sorted_words:
-            # Сортираме и IPA вариантите за консистенция
+            # Сортираме вариантите за консистенция
             variants = sorted(list(final_dict[word]))
             for variant in variants:
                 writer.writerow([word, variant])
@@ -117,8 +128,8 @@ def main():
 
     print(f"[SUCCESS] Готово! Финален файл: {OUTPUT_FILE}")
     print(f" -> Общо редове: {count}")
-    print(f" -> Омографите (вълна/вълна) са запазени.")
-    print(f" -> Артефакти като (en)/(bg) са премахнати.")
+    print(" -> Изчистени: nan, (bg), ̟, ʲ")
+    print(" -> Оправени: t͡s, t͡ʃ, d͡ʒ, ʃt͡ʃ")
 
 if __name__ == "__main__":
     main()
