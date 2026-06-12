@@ -7,129 +7,171 @@ HERE = Path(__file__).resolve().parent
 INPUT_FILE = HERE / "output" / "lexicon_raw.tsv"
 OUTPUT_FILE = HERE / "lexicon.tsv"
 
-# Азбука (за да сме сигурни, че единичните букви са там)
-ALPHABET_IPA = {
-    "а": "a", "б": "b", "в": "v", "г": "ɡ", "д": "d", "е": "ɛ",
-    "ж": "ʒ", "з": "z", "и": "i", "й": "j", "к": "k", "л": "l",
-    "м": "m", "н": "n", "о": "ɔ", "п": "p", "р": "r", "с": "s",
-    "т": "t", "у": "u", "ф": "f", "х": "x", "ц": "t͡s", 
-    "ч": "t͡ʃ", "ш": "ʃ", "щ": "ʃt͡ʃ", "ъ": "ɤ", "ь": "", 
-    "ю": "ju", "я": "ja"
+# Специфични "бъгове", открити от поддържащия проекта
+LITERAL_FIXES = {
+    "ɛrɡɔlɐm": "ɤ",    # ер голям (Ъ)
+    "ɛrmɐlɤk": "j",    # ер малък (Ь)
+    "ikrɐtkɔ": "j",    # и кратко (Й)
+    "ikratkɔ": "j",    # вариант
+    "ɔtˈinki": "",     # артефакт в края
+    "ɔtmɛtki": "",     # артефакт
+}
+# Ръчни поправки за 95-те думи, които Espeak счупи
+MANUAL_FIXES = {
+    "албедо": "albˈɛdɔ", "амонтилядо": "amɔntiljˈadɔ", "антиизкуство": "antiizkˈustvɔ",
+    "антипиратство": "antipirˈatstvɔ", "архитектурознание": "arxitɛkturɔznˈaniɛ",
+    "балсамико": "balsˈamikɔ", "бездържавие": "bɛzdɤrʒˈaviɛ", "безславие": "bɛzslˈaviɛ",
+    "бензое": "bɛnzɔˈɛ", "бетонджийство": "bɛtɔndʒˈijstvɔ", "биткаджийство": "bitkadʒˈijstvɔ",
+    "блюдолизничене": "bljudɔliznˈitʃɛnɛ", "богатеене": "bɔgatɛˈɛnɛ", "борсалино": "bɔrsalˈinɔ",
+    "брависимо": "bravˈisimɔ", "бушидо": "buʃidˈɔ", "бързоходство": "bɤrzɔxˈɔtstvɔ",
+    "веганство": "vˈɛɡanstvɔ", "вибрато": "vibrˈatɔ", "висине": "visinˈɛ",
+    "витро": "vˈitrɔ", "всеединство": "vsɛɛdˈinstvɔ", "всеоръжие": "vsɛɔrˈɤʒiɛ",
+    "второзаконие": "vtɔrɔzakˈɔniɛ", "въжарство": "vɤʒˈarstvɔ", "гаспачо": "ɡaspˈatʃɔ",
+    "гинко": "ɡˈinkɔ", "двойкарство": "dvɔjkˈarstvɔ", "димене": "dimˈɛnɛ",
+    "добле": "dˈɔblɛ", "дохио": "dˈɔxiɔ", "дробене": "drɔbˈɛnɛ",
+    "животозастраховане": "ʒivɔtɔzastraxˈɔvanɛ", "интертото": "intɛrtˈɔtɔ",
+    "инферно": "infˈɛrnɔ", "кахърене": "kaxˈɤrɛnɛ", "кейнсианство": "kɛjnsiˈanstvɔ",
+    "клечане": "klˈɛtʃanɛ", "коантро": "kɔantrˈɔ", "колебаене": "kɔlɛbˈaɛnɛ",
+    "конелиано": "kɔnɛliˈanɔ", "крайморие": "krajmˈɔriɛ", "кураре": "kurˈarɛ",
+    "лешоядство": "lɛʃɔjˈatstvɔ", "луфтвафе": "lˈuftvafɛ", "лъщене": "lɤʃtʃˈɛnɛ",
+    "майсторене": "majstɔrˈɛnɛ", "маслинопроизводство": "maslinɔprɔizvˈɔtstvɔ",
+    "метларство": "mɛtlˈarstvɔ", "мецотинто": "mɛtsɔtˈintɔ", "минерализиране": "minɛralizˈiranɛ",
+    "мирянство": "mirjˈanstvɔ", "музикантство": "muzikˈantstvɔ", "налбантство": "nalbˈantstvɔ",
+    "незнаене": "nɛznˈaɛnɛ", "необвързване": "nɛɔbvˈɤrzvanɛ", "непримирение": "nɛprimirˈɛniɛ",
+    "непритежаване": "nɛpritɛʒˈavanɛ", "несподеляне": "nɛspɔdɛljˈanɛ", "олийце": "ɔlˈijtsɛ",
+    "пантофарство": "pantɔfˈarstvɔ", "папо": "pˈapɔ", "пармиджано": "parmidʒˈanɔ",
+    "парно": "pˈarnɔ", "пасене": "pasˈɛnɛ", "песо": "pˈɛsɔ", "песто": "pˈɛstɔ",
+    "пилотство": "pilˈɔtstvɔ", "подвижничество": "pɔdvˈiʒnitʃɛstvɔ", "подмосковие": "pɔdmɔskˈɔviɛ",
+    "потенциране": "pɔtɛntsˈiranɛ", "правоверие": "pravɔvˈɛriɛ", "преводачество": "prɛvɔdˈatʃɛstvɔ",
+    "приднестровие": "pridnɛstrˈɔviɛ", "прошуто": "prɔʃˈutɔ", "псевдошампанско": "psɛvdɔʃampˈanskɔ",
+    "психо": "psˈixɔ", "растене": "rastˈɛnɛ", "редене": "rɛdˈɛnɛ", "режисьорство": "rɛʒisjˈɔrstvɔ",
+    "реминерализиране": "rɛminɛralizˈiranɛ", "риене": "rˈiɛnɛ", "самолетостроене": "samɔlɛtɔstrɔˈɛnɛ",
+    "скандинавие": "skandinˈaviɛ", "соцминало": "sɔtsmˈinalɔ", "суперкарго": "supɛrkˈarɡɔ",
+    "сърежисьорство": "sɤrɛʒisjˈɔrstvɔ", "термобельо": "tɛrmɔbɛljˈɔ", "тузарство": "tuzˈarstvɔ",
+    "фалшименто": "falʃimˈɛntɔ", "филморазпространение": "filmɔrasprɔstranˈɛniɛ",
+    "хамкане": "xˈamkanɛ", "христолюбие": "xristɔljˈubiɛ", "шевро": "ʃɛvrˈɔ", "шиацу": "ʃiˈatsu"
 }
 
-def is_garbage(word, ipa):
-    """Строг филтър за боклук"""
-    # 1. Ако думата започва/завършва с тире
-    if word.startswith("-") or word.endswith("-"): 
-        return True
-    # 2. Ако IPA съдържа грешка 'nan' (Not a Number)
-    if "nan" in ipa: 
-        return True
-    # 3. Празни
-    if not word.strip() or not ipa.strip(): 
-        return True
-    return False
 
-def clean_ipa_artifacts(ipa):
-    """
-    Дълбоко почистване на IPA символите.
-    """
-    # 1. Махаме маркери за език: (bg), (en)
-    ipa = re.sub(r"\([a-z]{2}\)", "", ipa)
-    
-    # 2. Махаме скобите
-    ipa = ipa.replace("(", "").replace(")", "")
-    
-    # 3. Махаме диакритики и артефакти (открити при одита)
-    # U+031F (Plus sign below - ̟)
-    # U+032F (Inverted breve below - ̯)
-    # U+031E (Down tack - ̞)
-    ipa = ipa.replace("\u031f", "").replace("\u032f", "").replace("\u031e", "")
+def ipa_quality_score(ipa):
+    score = 0.0
+    stress_count = ipa.count("ˈ")
+    if stress_count == 1:
+        score += 100.0
+    else:
+        score -= 25.0 * abs(stress_count - 1)
 
-    # 4. Странният символ ɟ (вероятно грешка за g или d) -> правим го на g
-    ipa = ipa.replace("ɟ", "ɡ")
-    
-    # 5. Уеднаквяване на палатализация: ʲ -> j
-    ipa = ipa.replace("ʲ", "j")
-    
-    # 6. Махаме излишни интервали
-    ipa = ipa.replace(" ", "")
-    
-    return ipa
+    score += ipa.count("ɐ") * 2.0
+    score += ipa.count("ɤ") * 2.0
+    score -= ipa.count("a") * 0.25
+    score -= ipa.count("o") * 0.25
+    score -= ipa.count("e") * 0.25
+    score -= ipa.count("g") * 2.0
 
-def apply_custom_phonology(word, ipa):
-    """
-    Прилага специфичните поправки (Affricates)
-    """
-    if not ipa: 
+    if ipa.endswith(("ˈɤ", "ˈa", "ˈɔ", "ˈu", "ˈi", "ˈɛ")):
+        score -= 10.0
+
+    return score
+
+
+def select_canonical_variant(variants):
+    return max(
+        sorted(set(variants)),
+        key=lambda ipa: (ipa_quality_score(ipa), -len(ipa), ipa),
+    )
+
+
+def clean_ipa_base(ipa):
+    if not ipa:
         return ""
 
-    # Първо чистим артефактите
-    ipa = clean_ipa_artifacts(ipa)
+    # 1. Оправяме имената на буквите (икратко, ерголям и т.н.)
+    # Трябва да е ПРЕДИ останалото чистене
+    for bad, good in LITERAL_FIXES.items():
+        ipa = ipa.replace(bad, good)
 
-    # 1. Оправяне на Ц (ts -> t͡s)
-    if "ts" in ipa and "t͡s" not in ipa:
-        ipa = ipa.replace("ts", "t͡s")
+    # 2. Махаме тирета и Espeak артефакти
+    ipa = ipa.replace("\u0361", "")
+    espeak_map = {
+        'ɫ': 'l', 'ɲ': 'n', 'ʂ': 'ʃ', 'ʑ': 'ʒ',
+        'ç': 'x', 'ʎ': 'l', 'c': 'k', 'ŋ': 'n', 'ɱ': 'm',
+        'w': 'v', '-': ''
+    }
+    for bad, good in espeak_map.items():
+        ipa = ipa.replace(bad, good)
 
-    # 2. Оправяне на Ч (tʃ -> t͡ʃ)
-    if "tʃ" in ipa and "t͡ʃ" not in ipa:
-        ipa = ipa.replace("tʃ", "t͡ʃ")
+    # 3. Wiktionary нормализация
+    ipa = ipa.replace('e', 'ɛ').replace('o', 'ɔ').replace('g', 'ɡ')
 
-    # 3. Оправяне на ДЖ (dʒ -> d͡ʒ) - НОВО!
-    if "dʒ" in ipa and "d͡ʒ" not in ipa:
-        ipa = ipa.replace("dʒ", "d͡ʒ")
+    # 4. Изчистване на диакритики
+    ipa = re.sub(r"[\u031f\u032f\u031e\u032a]", "", ipa)
+    ipa = ipa.replace("ɟ", "ɡ").replace("ʲ", "j").replace(
+        " ", "").replace("(", "").replace(")", "")
 
-    # 4. Оправяне на Щ (ʃt -> ʃt͡ʃ) - само ако думата има 'щ'
-    if "щ" in word:
-        if "ʃt" in ipa and "ʃt͡ʃ" not in ipa:
-             ipa = ipa.replace("ʃt", "ʃt͡ʃ")
-    
+    # 5. Премахване на двойни ударения (пазим последното)
+    if ipa.count("ˈ") > 1:
+        parts = ipa.split("ˈ")
+        ipa = "".join(parts[:-1]) + "ˈ" + parts[-1]
+
     return ipa
+
+
+def fix_sht_logic(word, ipa):
+    if "щ" not in word:
+        if "ш" in word:
+            ipa = ipa.replace("ʃtʃ", "ʃ")
+        return ipa
+    if "ʃtʃ" in ipa or "ʃˈtʃ" in ipa:
+        return ipa
+    ipa = re.sub(r'ʃ(ˈ?)t', r'ʃ\1tʃ', ipa)
+    if "ʃtʃ" not in ipa and "ʃˈtʃ" not in ipa:
+        ipa = re.sub(r'ʃ(ˈ?)', r'ʃ\1tʃ', ipa)
+    return ipa.replace("ʃtʃtʃ", "ʃtʃ").replace("ʃtʃt", "ʃtʃ")
+
 
 def main():
     if not INPUT_FILE.exists():
-        print("[ERROR] Липсва lexicon_raw.tsv. Пусни Step 2!")
         return
+    final_dataset = defaultdict(set)
+    # вече не търсим ɛnnˈan, защото LITERAL_FIXES ще го оправи
+    bad_markers = {"nanb", "anbg", "nnbg", "nnan"}
 
-    print("[INFO] Финално полиране (Deep Clean + Affricates + Dedupe)...")
-    
-    final_dict = defaultdict(set)
-
-    with open(INPUT_FILE, "r", encoding="utf-8") as f:
+    with open(INPUT_FILE, "r", encoding="utf-8", newline="") as f:
         reader = csv.reader(f, delimiter="\t")
         for row in reader:
-            if not row: 
+            if len(row) < 2:
                 continue
             word = row[0].strip().lower()
-            ipa = row[1].strip()
-            
-            if not is_garbage(word, ipa):
-                new_ipa = apply_custom_phonology(word, ipa)
-                if new_ipa:
-                    final_dict[word].add(new_ipa)
+            raw_ipa = row[1].strip()
 
-    # Добавяне на азбуката
-    for letter, ipa in ALPHABET_IPA.items():
-        # Force-ваме азбуката да е точно както искаме
-        final_dict[letter] = {ipa}
+            # Филтри за боклук
+            if any(c.isdigit() for c in word):
+                continue
+            if word.startswith(("-", "<", "[", "(")):
+                continue
+            if any('a' <= c <= 'z' for c in word):
+                continue
 
-    # Сортиране и запис
-    sorted_words = sorted(final_dict.keys())
-    
-    count = 0
-    with open(OUTPUT_FILE, "w", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f, delimiter="\t")
-        for word in sorted_words:
-            # Сортираме вариантите за консистенция
-            variants = sorted(list(final_dict[word]))
-            for variant in variants:
-                writer.writerow([word, variant])
-                count += 1
+            # Чистене
+            if word in MANUAL_FIXES:
+                ipa = MANUAL_FIXES[word]
+            else:
+                ipa = clean_ipa_base(raw_ipa)
+                if any(m in ipa.lower() for m in bad_markers) or not ipa:
+                    continue
+                ipa = fix_sht_logic(word, ipa)
 
-    print(f"[SUCCESS] Готово! Финален файл: {OUTPUT_FILE}")
-    print(f" -> Общо редове: {count}")
-    print(" -> Изчистени: nan, (bg), ̟, ʲ")
-    print(" -> Оправени: t͡s, t͡ʃ, d͡ʒ, ʃt͡ʃ")
+            final_dataset[word].add(ipa)
+
+    # ВАЖНО: Подреждане и запис (Unix style newlines)
+    sorted_words = sorted(final_dataset.keys())
+    with open(OUTPUT_FILE, "w", encoding="utf-8", newline="\n") as f:
+        writer = csv.writer(f, delimiter="\t", lineterminator="\n")
+        for w in sorted_words:
+            writer.writerow([w, select_canonical_variant(final_dataset[w])])
+
+    print(f"[SUCCESS] Лексиконът е пречистен и подреден.")
+
 
 if __name__ == "__main__":
     main()

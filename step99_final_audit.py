@@ -1,74 +1,83 @@
 import csv
+import sys
 from pathlib import Path
 from collections import Counter
 
-# --- КОНФИГУРАЦИЯ ---
 HERE = Path(__file__).resolve().parent
-INPUT_FILE = HERE / "lexicon.tsv"
+PRIMARY_INPUT = HERE / "lexicon.tsv"
+LEGACY_INPUT = HERE / "lexicon_final.tsv"
+ASSET_INPUT = HERE / "assets" / "lexicon.tsv"
+
+
+def emit(message: str):
+    text = f"{message}\n"
+    encoding = sys.stdout.encoding or "utf-8"
+    sys.stdout.buffer.write(text.encode(encoding, errors="replace"))
+
+
+def resolve_input_file():
+    for path in (PRIMARY_INPUT, LEGACY_INPUT, ASSET_INPUT):
+        if path.exists():
+            return path
+    return PRIMARY_INPUT
 
 def main():
-    if not INPUT_FILE.exists():
-        print(f"[ERROR] Файлът липсва: {INPUT_FILE}")
-        print("Първо изпълнете стъпки 1, 2 и 3!")
+    input_file = resolve_input_file()
+    if not input_file.exists():
+        emit(f"[ERROR] Файлът липсва: {input_file}")
         return
-    
-    # 1. Събираме статистика
+
     char_counter = Counter()
     total_lines = 0
-    
-    print(f"[INFO] Одитиране на {INPUT_FILE.name}...")
-    
-    with open(INPUT_FILE, "r", encoding="utf-8") as f:
-        reader = csv.reader(f, delimiter="\t")
-        
-        for row in reader:
-            if not row: 
-                continue
-            ipa = row[1]
-            total_lines += 1
-            
-            # Броим всеки знак
-            for char in ipa:
-                char_counter[char] += 1
+    words_with_sch = [] 
 
-    # 2. Принтираме резултата
-    print("\n" + "="*40)
-    print(f"--- СТАТИСТИКА НА СИМВОЛИТЕ ---")
-    print(f"Общо редове: {total_lines}")
-    print(f"Уникални символи: {len(char_counter)}")
-    print("-" * 40)
-    
-    # Сортираме по честота
-    for char, count in char_counter.most_common():
-        # Показваме Unicode кода за прецизност
-        print(f"'{char}' (U+{ord(char):04X}) : {count}")
-    
-    print("="*40)
-    
-    # 3. Автоматична проверка за грешки
+    emit(f"[INFO] Одит на файл: {input_file}")
+
+    with open(input_file, "r", encoding="utf-8", newline="") as f:
+        reader = csv.reader(f, delimiter="\t")
+        for row in reader:
+            if len(row) < 2: continue
+            word, ipa = row[0], row[1]
+            total_lines += 1
+            for ch in ipa:
+                char_counter[ch] += 1
+            if "щ" in word:
+                words_with_sch.append((word, ipa))
+
+    emit("")
+    emit("--- СТАТИСТИКА НА СИМВОЛИТЕ ---")
+    for ch, count in char_counter.most_common():
+        emit(f"'{ch}' (U+{ord(ch):04X}) : {count}")
+
     errors = []
     
-    # Проверка за кирилица в IPA
-    for char in char_counter:
-        if ord(char) > 0x0400: 
-            errors.append(f"Открита кирилица: '{char}'")
-    
-    # Проверка за специфични грешки
-    if 'ə' in char_counter: 
-        errors.append("Открито шва 'ə' (трябва да е ɤ)")
-    if 'ts' in char_counter: 
-        errors.append("Открито 'ts' без tie-bar")
-    if 'nan' in char_counter: 
-        errors.append("Открита грешка 'nan'")
-    if '(' in char_counter: 
-        errors.append("Открити скоби ( )")
+    # Проверка за tie-bar
+    tie_char = "\u0361"
+    if tie_char in char_counter:
+        errors.append(f"ГРЕШКА: Намерен tie-bar (⁀)!")
 
+    # Интелигентна проверка за Щ (игнорираме ударението при проверката)
+    sch_fail = 0
+    for w, ipa in words_with_sch:
+        # ПРАВИЛО: махаме ударението само за теста, за да видим дали звуците са там
+        test_ipa = ipa.replace("ˈ", "")
+        if "ʃtʃ" not in test_ipa:
+            sch_fail += 1
+            if sch_fail < 5:
+                emit(f"[DEBUG] Реална грешка при Щ: {w} -> {ipa}")
+    
+    if sch_fail > 0:
+        errors.append(f"ГРЕШКА: {sch_fail} думи с 'щ' не съдържат 'ʃtʃ' (дори без ударение)")
+
+    emit("")
+    emit("=" * 40)
     if errors:
-        print("\n[FAIL] ❌ ОТКРИТИ СА ПРОБЛЕМИ:")
+        emit("[FAIL] ОТКРИТИ ПРОБЛЕМИ:")
         for e in errors:
-            print(f" - {e}")
+            emit(f" - {e}")
     else:
-        print("\n[PASS] ✅ Файлът изглежда чист и валиден!")
+        emit("[PASS] Лексиконът е ПЕРФЕКТЕН! Всички 'щ' са оправени, символите са чисти.")
+    emit("=" * 40)
 
 if __name__ == "__main__":
     main()

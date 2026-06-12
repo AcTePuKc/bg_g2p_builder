@@ -12,3 +12,16 @@ output/
 
 # Others
 *_old.tsv
+lexicon.tsv
+lexicon_final.tsv
+lexicon_cleaned_v2.tsv
+lexicon.zip
+assets/lexicon_bad_rows.tsv
+assets/lexicon_unmatched.tsv
+gotovii2.tsv
+bulgarian_dictionary/
+fix_lexicon_from_bulgarian.py
+gorut_cleanup.py
+goruut_lexicon.tsv
+goruut_merger.py
+pyproject.toml

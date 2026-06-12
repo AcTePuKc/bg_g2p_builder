@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+title: "bg_g2p_builder"
+message: "If you use this repository, please cite it using this metadata."
+type: software
+authors:
+  - family-names: "Nikolaev"
+    given-names: "Shteryan"
+repository-code: "https://github.com/AcTePuKc/bg_g2p_builder"
+url: "https://github.com/AcTePuKc/bg_g2p_builder"
+license: "Apache-2.0"
+version: "0.1.0"
+abstract: "Tools and rules for building a Bulgarian grapheme-to-phoneme lexicon from upstream lexical and pronunciation sources."
