@@ -7,6 +7,10 @@ data outputs.
 
 - Repository source code and documentation added by the project are licensed
   under Apache License 2.0 unless stated otherwise. See `LICENSE`.
+- Apache-2.0 applies only to source code and documentation written in this
+  repository. It does not replace, override, or relax the licenses of external
+  upstream sources, and it does not grant extra rights over data derived from
+  them.
 
 ## Generated lexicon outputs
 
@@ -32,5 +36,8 @@ In particular:
   generated lexical outputs.
 - When in doubt, preserve attribution, keep provenance records, and disclose
   that generated outputs may contain Wiktionary-derived material.
+- Generated lexicon files may contain derived data from external sources. When
+  redistributing such files, comply with the relevant upstream licenses and
+  attribution requirements.
 
 This file is informational only and is not legal advice.
